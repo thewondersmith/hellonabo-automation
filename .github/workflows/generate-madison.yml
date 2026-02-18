@@ -1,0 +1,55 @@
+name: Generate Madison Dashboard
+
+on:
+  schedule:
+    # Run every Saturday at 12:00 PM UTC (7:00 AM EST)
+    - cron: '0 12 * * 6'
+  
+  # Allow manual trigger
+  workflow_dispatch:
+
+jobs:
+  generate-dashboard:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      
+      - name: Install dependencies
+        run: |
+          pip install --upgrade pip
+          pip install -r automation/requirements.txt
+      
+      - name: Run newsletter generator
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: |
+          cd automation
+          python newsletter.py
+      
+      - name: Commit and push changes
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "Hello Nabo Bot"
+          git add madison-al/index.html
+          
+          # Only commit if there are changes
+          if git diff --staged --quiet; then
+            echo "No changes to commit"
+          else
+            git commit -m "📊 Update Madison dashboard - $(date +'%Y-%m-%d')"
+            git push
+          fi
+      
+      - name: Deployment notification
+        if: success()
+        run: |
+          echo "✅ Dashboard updated successfully"
+          echo "📅 Generated: $(date)"
+          echo "🔗 View at: https://hellonabo.com/madison-al/"
